@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Burlesco
 // @namespace    https://burles.co/
-// @version      11.15
+// @version      11.19
 // @description  Leia notícias sem ser assinante, burle o paywall
 // @author       rodorgas & AugustoResende
 // @supportURL   https://burles.co
-// @icon64       https://burles.co/userscript/icon.png
+// @icon         https://raw.githubusercontent.com/burlesco/site/master/logo_semfundo.png
 // Atenção:      Caso algum site não funcione logo após a instalação, limpe o cache do navegador.
 // @grant        GM_webRequest
 // @grant        GM_xmlhttpRequest
@@ -18,7 +18,7 @@
 // @match        *://www.economist.com/*
 // @match        *://*.estadao.com.br/*
 // @match        *://foreignpolicy.com/*
-// @match        *://blockv2.fivewall.com.br/*
+// @match        *://*.fivewall.com.br/*
 // @match        *://*.folha.uol.com.br/*
 // @match        *://*.folha.com.br/*
 // @match        *://gauchazh.clicrbs.com.br/*
@@ -28,7 +28,6 @@
 // @match        *://ogjs.infoglobo.com.br/*
 // @match        *://*.jota.info/*
 // @match        *://www.jornalnh.com.br/*
-// @match        *://*.nexojornal.com.br/*
 // @match        *://www.netdeal.com.br/*
 // @match        *://*.nytimes.com/*
 // @match        *://*.nyt.com/*
@@ -58,6 +57,11 @@
 // @match        *://*.diarinho.com.br/*
 // @match        *://*.diariodaregiao.com.br/*
 // @match        *://*.correio24horas.com.br/*
+// @match        *://*.dgabc.com.br/*
+// @match        *://crusoe.com.br/*
+// @match        *://*.em.com.br/*
+// @match        *://*.forbes.pl/*
+// @match        *://*.newsweek.pl/*
 // @webRequestItem {"selector":"*://correio-static.cworks.cloud/vendor/bower_components/paywall.js/paywall.js*","action":"cancel"}
 // @webRequestItem {"selector":{"include":"*://paywall.folha.uol.com.br/*","exclude":"*://paywall.folha.uol.com.br/status.php"} ,"action":"cancel"}
 // @webRequestItem {"selector":"*://static.folha.uol.com.br/paywall/*","action":"cancel"}
@@ -66,8 +70,7 @@
 // @webRequestItem {"selector":"*://www.netdeal.com.br/*","action":"cancel"}
 // @webRequestItem {"selector":"*://correio.rac.com.br/includes/js/novo_cp/fivewall.js*","action":"cancel"}
 // @webRequestItem {"selector":"*://dashboard.tinypass.com/xbuilder/experience/load*","action":"cancel"}
-// @webRequestItem {"selector":"*://*.jornalnh.com.br/includes/js/paywall.js*","action":"cancel"}
-// @webRequestItem {"selector":"*://blockv2.fivewall.com.br/*","action":"cancel"}
+// @webRequestItem {"selector":"*://*.fivewall.com.br/*","action":"cancel"}
 // @webRequestItem {"selector":"*://www.rbsonline.com.br/cdn/scripts/SLoader.js","action":"cancel"}
 // @webRequestItem {"selector":"*://*.nytimes.com/js/mtr.js","action":"cancel"}
 // @webRequestItem {"selector":"*://*.washingtonpost.com/wp-stat/pwapi/*","action":"cancel"}
@@ -78,13 +81,13 @@
 // @webRequestItem {"selector":"*://www.rbsonline.com.br/cdn/scripts/special-paywall.min.js*","action":"cancel"}
 // @webRequestItem {"selector":"https://paywall.nsctotal.com.br/behaviors","action":"cancel"}
 // @webRequestItem {"selector":"*://*.estadao.com.br/paywall/*","action":"cancel"}
-// @webRequestItem {"selector":"*://www.folhadelondrina.com.br/*/fivewall.js*","action":"cancel"}
-// @webRequestItem {"selector":"*://www.jornalvs.com.br/includes/js/paywall.js*","action":"cancel"}
+// @webRequestItem {"selector":"*://www.folhadelondrina.com.br/login.php*","action":"cancel"}
 // @webRequestItem {"selector":"https://www.eltiempo.com/js/desktopArticle.js*","action":"cancel"}
 // @webRequestItem {"selector":"*://*.haaretz.co.il/*/inter.js","action":"cancel"}
 // @webRequestItem {"selector":"*://*.themarker.com/*/inter.js","action":"cancel"}
 // @webRequestItem {"selector":"*://*.diarinho.com.br/wp-admin/admin-ajax.php","action":"cancel"}
 // @webRequestItem {"selector":"*://diarinho.com.br/wp-admin/admin-ajax.php","action":"cancel"}
+// @webRequestItem {"selector":"*://static.infoglobo.com.br/paywall/js/tiny.js","action":"cancel"}
 // @run-at       document-start
 // @noframes
 // ==/UserScript==
@@ -103,6 +106,7 @@ if (/gauchazh\.clicrbs\.com\.br/.test(document.location.host)) {
           injectme = injectme.replace(/[a-z].requestCPF\|\|!1,/g, 'false,');
           injectme = injectme.replace(
             /![a-z].showLoginPaywall&&![a-z].showPaywall\|\|!1/g, 'true');
+          injectme = injectme.replace('throw new Error("only one instance of babel-polyfill is allowed");', '');
           var script = document.createElement('script');
           script.type = 'text/javascript';
           var textNode = document.createTextNode(injectme);
@@ -129,49 +133,6 @@ if (/gauchazh\.clicrbs\.com\.br/.test(document.location.host)) {
   };
 }
 
-else if (/oglobo\.globo\.com/.test(document.location.host)) {
-
-  // Insere Tinypass, necessário para a biblioteca piano
-
-  GM_xmlhttpRequest({
-    method: 'GET',
-    url: 'https://cdn.tinypass.com/api/tinypass.min.js',
-    anonymous: true,
-    onload: function(response) {
-      var script = document.createElement('script');
-      script.type = 'text/javascript';
-      var textNode = document.createTextNode(response.responseText);
-      script.appendChild(textNode);
-      document.head.appendChild(script);
-    }
-  });
-
-  document.addEventListener('DOMContentLoaded', function() {
-    function patchJs(jsurl) {
-      GM_xmlhttpRequest({
-        method: 'GET',
-        url: jsurl,
-        onload: function(response) {
-          var injectme = response.responseText;
-          injectme = injectme.replace('window.hasPaywall||!1;window.dataLayer=window.dataLayer||[]', 'false');
-          injectme = injectme.replace('window.conteudoExclusivo?!0:!1', 'false');
-          injectme = injectme.replace('Piano.activePaywall=!0', 'Piano.activePaywall=false');
-          injectme = injectme.replace('Piano.checkPaywall()', '');
-          var script = document.createElement('script');
-          script.type = 'text/javascript';
-          var textNode = document.createTextNode(injectme);
-          script.appendChild(textNode);
-          document.head.appendChild(script);
-        }
-      });
-    }
-
-    var scripts = Array.from(document.getElementsByTagName('script'));
-    var script = scripts.find((el) => { return el.src.includes('js/tiny.js'); });
-    if (script)
-      patchJs(script.src);
-  });
-}
 
 else if (/jota\.info/.test(document.location.host)) {
   var page_url = window.location.href;
@@ -199,6 +160,9 @@ else if (/jota\.info/.test(document.location.host)) {
   }
 }
 
+else if (/crusoe\.com\.br/.test(document.location.host)) {
+  document.cookie = 'crs_subscriber=1';
+}
 
 // run_at: document_idle
 document.addEventListener('DOMContentLoaded', function() {
@@ -256,30 +220,6 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
   }
 
-  else if (/nexojornal\.com\.br/.test(document.location.host)) {
-    code = `
-      style = document.createElement('style');
-      style.type = 'text/css';
-      css='#aviso-metered-access {display: none !important}';
-      style.appendChild(document.createTextNode(css));
-      document.head.appendChild(style);
-      paywallContainer = document.getElementsByClassName('new-paywall-container')[0];
-      paywallContent = paywallContainer.getAttribute('data-paywall-content');
-      nexoApiURL = paywallContainer.getAttribute('data-paywall-check');
-      xmlhttp = new XMLHttpRequest();
-      xmlhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && (this.status == 200 || this.status == 201 || this.status == 401)) {
-          access_token = JSON.parse(this.responseText)['access_token'];
-          paywallContainer.className = 'wf-placeholder';
-          paywallContainer.setAttribute('data-loadURL', paywallContent.replace('{access_token}', access_token));
-          paywallContainer.setAttribute('data-skip-profiles', '');
-          WFLazyLoader.loadFragment()
-        }
-      };
-      xmlhttp.open('GET', nexoApiURL, true);
-      xmlhttp.send();`;
-  }
-
   else if (/abril\.com\.br/.test(document.location.host))
     code = `
       document.queryselectorall('.callpaywall')
@@ -293,10 +233,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // verificar se a altura não buga com a mudança de largura da página (layout responsivo, né)
     code=`
       jQuery('[class^=paywall]').remove();
-      jQuery('[class$=blocked]').removeClass();
+      jQuery('[class^=blocked]').removeClass();
       jQuery('[id^=paywall]').removeClass('hide').removeClass('is-active');
       jQuery('.noticias-single__content__text').attr('style', 'height:auto;');
       jQuery('[id^=paywall]').remove();
+      setInterval(function() { jQuery('[itemprop^=articleBody]').css('height', '100%'); console.log('Burlesco: forçando altura...'); }, 1000);
+
     `;
 
   else if (/nytimes\.com/.test(document.location.host))
@@ -379,6 +321,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+  }
+  
+  else if (/dgabc\.com\.br/.test(document.location.host)) {
+    code = `
+      var email = 'colaborador@dgabc.com.br';
+      var senha = '';
+      localStorage.emailNoticiaExclusiva = email;
+      $('.NoticiaExclusivaNaoLogado').hide();
+      $('.NoticiaExclusivaLogadoSemPermissao').hide();
+      $('.linhaSuperBanner').show();
+      $('.footer').show();
+      $('.NoticiaExclusivaLogado').show();
+    `;
+  }
+  
+  else if (/em\.com\.br/.test(document.location.host)) {
+    window.id_acesso_noticia = 0;
+      
+    let style = document.createElement('style');
+    style.type = 'text/css';
+
+    let css=`
+      .news-blocked {
+        display: none !important
+      }
+      .news-blocked-no-scroll {
+        overflow: auto !important;
+        width: auto !important;
+        position: unset !important;
+      }
+      
+      div[itemprop="articleBody"] {
+        height: auto !important;
+      }
+    `;
+
+    style.appendChild(document.createTextNode(css));
+    document.head.appendChild(style);
+  }
+
+  else if (/newsweek\.pl|forbes\.pl/.test(document.location.host)) {
+    let contentPremium = document.querySelector('.contentPremium');
+    if (contentPremium) {
+      contentPremium.classList.remove('contentPremium');
+    }
   }
 
   if (code !== null) {
